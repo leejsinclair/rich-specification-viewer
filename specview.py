@@ -648,6 +648,11 @@ class Viewer:
                     continue  # defined twice in one document still counts once
                 seen_here.add(definition.code)
                 index.definitions.setdefault(definition.code, []).append(definition)
+        # A heading for a code another document defines as an item expands that item (FR-026).
+        for code, found in index.definitions.items():
+            item_docs = {d.document for d in found if d.kind != "heading"}
+            if item_docs:
+                found[:] = [d for d in found if d.kind != "heading" or d.document in item_docs]
         return index
 
     # -- pages ------------------------------------------------------------------------------

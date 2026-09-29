@@ -37,9 +37,9 @@ description: "Task list for the rich specification viewer"
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [X] T001 Create `specview.py` at the repository root with a module docstring, a `main()` entry point, a Python 3.11 version check that exits with a message on older versions, and standard-library imports only (traces: AIS-034, AIS-038, AIS-073)
-- [X] T002 [P] Create `tests/__init__.py`, `tests/unit/__init__.py` and `tests/integration/__init__.py` so `python3 -m unittest discover -s tests` finds both suites (traces: AIS-051, AIS-052)
-- [X] T003 [P] Create the fixture project `tests/fixtures/project/specs/` with a story `001-demo/` holding `s01-requirements.md`, `s02-functional-spec.md` (codes referencing s01, an unresolved code, a code defined twice, a challenge block, HTML comments, `eil:` regions, Mermaid blocks of several types including one invalid), a `spec.md` symbolic link and a `plan.md` identical copy of other documents, a `checklists/requirements.md` defining a code, a second story `002-other/` defining a code also used in `001-demo`, and a `specs/README.md` containing codes (traces: AIS-051, AIS-052, AIS-088, AIS-089)
+- [X] T001 Create `specview.py` at the repository root with a module docstring, a `main()` entry point, a Python 3.11 version check that exits with a message on older versions, and standard-library imports only (traces: AIS-034, AIS-038, AIS-073) (code: 2cceacc)
+- [X] T002 [P] Create `tests/__init__.py`, `tests/unit/__init__.py` and `tests/integration/__init__.py` so `python3 -m unittest discover -s tests` finds both suites (traces: AIS-051, AIS-052) (code: 2cceacc)
+- [X] T003 [P] Create the fixture project `tests/fixtures/project/specs/` with a story `001-demo/` holding `s01-requirements.md`, `s02-functional-spec.md` (codes referencing s01, an unresolved code, a code defined twice, a challenge block, HTML comments, `eil:` regions, Mermaid blocks of several types including one invalid), a `spec.md` symbolic link and a `plan.md` identical copy of other documents, a `checklists/requirements.md` defining a code, a second story `002-other/` defining a code also used in `001-demo`, and a `specs/README.md` containing codes (traces: AIS-051, AIS-052, AIS-088, AIS-089) (code: 2cceacc)
 
 ---
 
@@ -47,17 +47,17 @@ description: "Task list for the rich specification viewer"
 
 **Purpose**: the server skeleton, the security checks and the Markdown renderer every story needs.
 
-- [X] T004 Write unit tests for the Path guard (`..`, absolute paths, a symbolic link resolving outside `specs/`, a path inside) in `tests/unit/test_path_guard.py` (traces: AIS-051, AIS-056, AIS-066)
-- [X] T005 [P] Write unit tests for the Host check (`localhost`, `127.0.0.1`, either with any port, a foreign host, a missing header) in `tests/unit/test_host_check.py` (traces: AIS-051, AIS-055)
-- [X] T006 [P] Write unit tests for container detection and bind-address choice, including `--host` override, in `tests/unit/test_startup.py` (traces: AIS-051, AIS-036)
-- [X] T007 [P] Write unit tests for the Markdown renderer covering every construct in FR-004, HTML escaping of text and raw HTML, and the dropping of HTML comments, `eil:` blocks and the assessment, comprehension and approval regions, in `tests/unit/test_markdown.py` (traces: AIS-004, AIS-019, AIS-051, AIS-058)
-- [X] T008 Implement the Path guard in `specview.py`: resolve with `Path.resolve()` and accept only paths that are relative to `<start>/specs`; all file opens go through it, read-only (traces: AIS-018, AIS-041, AIS-056, AIS-057, AIS-066)
-- [X] T009 Implement the Host check in `specview.py`: strip any port and accept only `localhost` and `127.0.0.1`, otherwise `403` (traces: AIS-055)
-- [X] T010 Implement start-up in `specview.py` per `contracts/cli.md`: container detection, bind to `0.0.0.0` or `127.0.0.1`, optional `--host` and `--port`, first free port from 8000 to 8019, start-up lines, `webbrowser.open`, a message and exit when all ports are busy, clean Ctrl+C (traces: AIS-017, AIS-035, AIS-036, AIS-065, AIS-075)
-- [X] T011 Implement the Request handler in `specview.py` on `http.server.ThreadingHTTPServer`: Host check first, route table per `contracts/http.md`, `403`, `404` and `500` pages, per-request log lines and rendering tracebacks to the terminal (traces: AIS-029, AIS-043, AIS-044, AIS-046, AIS-074, AIS-075)
-- [X] T012 Implement the Markdown renderer's block parser in `specview.py`: headings with stable anchors, paragraphs, ordered, unordered and nested lists, task-list items, tables, block quotes, fenced code blocks; drop HTML comments, `eil:` blocks and the assessment, comprehension and approval regions; show anything it cannot interpret as escaped plain text (traces: AIS-004, AIS-019, AIS-030)
-- [X] T013 Implement the renderer's inline pass in `specview.py`: HTML-escape first, then emphasis, inline code and links (traces: AIS-004, AIS-030, AIS-058)
-- [X] T014 Implement the Page template in `specview.py`: inline stylesheet meeting the readability checklist (reading width, clear fonts, spacing, scannable headings and lists), breadcrumbs, the search box, the body slot and the script slots (traces: AIS-005, AIS-020, AIS-038)
+- [X] T004 Write unit tests for the Path guard (`..`, absolute paths, a symbolic link resolving outside `specs/`, a path inside) in `tests/unit/test_path_guard.py` (traces: AIS-051, AIS-056, AIS-066) (code: 2cceacc)
+- [X] T005 [P] Write unit tests for the Host check (`localhost`, `127.0.0.1`, either with any port, a foreign host, a missing header) in `tests/unit/test_host_check.py` (traces: AIS-051, AIS-055) (code: 2cceacc)
+- [X] T006 [P] Write unit tests for container detection and bind-address choice, including `--host` override, in `tests/unit/test_startup.py` (traces: AIS-051, AIS-036) (code: 2cceacc)
+- [X] T007 [P] Write unit tests for the Markdown renderer covering every construct in FR-004, HTML escaping of text and raw HTML, and the dropping of HTML comments, `eil:` blocks and the assessment, comprehension and approval regions, in `tests/unit/test_markdown.py` (traces: AIS-004, AIS-019, AIS-051, AIS-058) (code: 2cceacc)
+- [X] T008 Implement the Path guard in `specview.py`: resolve with `Path.resolve()` and accept only paths that are relative to `<start>/specs`; all file opens go through it, read-only (traces: AIS-018, AIS-041, AIS-056, AIS-057, AIS-066) (code: 2cceacc)
+- [X] T009 Implement the Host check in `specview.py`: strip any port and accept only `localhost` and `127.0.0.1`, otherwise `403` (traces: AIS-055) (code: 2cceacc)
+- [X] T010 Implement start-up in `specview.py` per `contracts/cli.md`: container detection, bind to `0.0.0.0` or `127.0.0.1`, optional `--host` and `--port`, first free port from 8000 to 8019, start-up lines, `webbrowser.open`, a message and exit when all ports are busy, clean Ctrl+C (traces: AIS-017, AIS-035, AIS-036, AIS-065, AIS-075) (code: 2cceacc)
+- [X] T011 Implement the Request handler in `specview.py` on `http.server.ThreadingHTTPServer`: Host check first, route table per `contracts/http.md`, `403`, `404` and `500` pages, per-request log lines and rendering tracebacks to the terminal (traces: AIS-029, AIS-043, AIS-044, AIS-046, AIS-074, AIS-075) (code: 2cceacc)
+- [X] T012 Implement the Markdown renderer's block parser in `specview.py`: headings with stable anchors, paragraphs, ordered, unordered and nested lists, task-list items, tables, block quotes, fenced code blocks; drop HTML comments, `eil:` blocks and the assessment, comprehension and approval regions; show anything it cannot interpret as escaped plain text (traces: AIS-004, AIS-019, AIS-030) (code: 2cceacc)
+- [X] T013 Implement the renderer's inline pass in `specview.py`: HTML-escape first, then emphasis, inline code and links (traces: AIS-004, AIS-030, AIS-058) (code: 2cceacc)
+- [X] T014 Implement the Page template in `specview.py`: inline stylesheet meeting the readability checklist (reading width, clear fonts, spacing, scannable headings and lists), breadcrumbs, the search box, the body slot and the script slots (traces: AIS-005, AIS-020, AIS-038) (code: 2cceacc)
 
 **Checkpoint**: `python3 specview.py` starts, refuses foreign hosts and paths outside `specs/`, and T004 to T007 pass.
 
@@ -69,12 +69,12 @@ description: "Task list for the rich specification viewer"
 
 **Independent Test**: start the viewer on the fixture project; the navigation view lists the stories; `*/s01-*` finds the Requirements document; opening it shows formatted content with breadcrumbs; a folder with no `specs/` shows "No specs folder found".
 
-- [X] T015 [P] [US1] Write unit tests for glob search (plain word wrapped as `*word*`, wildcards, case-insensitivity, sort order, empty pattern, no `specs/`) in `tests/unit/test_search.py` (traces: AIS-051, AIS-033, AIS-061)
-- [X] T016 [P] [US1] Write integration tests that start the server on a free port against the fixture project and check the navigation view, search JSON, a rendered document page, breadcrumbs, `403` for a path above the start folder and a foreign Host header, and "No specs folder found" from a folder without `specs/`, in `tests/integration/test_navigation_and_search.py` (traces: AIS-052, AIS-053, AIS-060)
-- [X] T017 [US1] Implement the navigation view in `specview.py`: list folders and `.md` documents of `specs/` or a subfolder at request time, with breadcrumbs and "No specs folder found" under the search box when `specs/` is missing (traces: AIS-001, AIS-007, AIS-020, AIS-043, AIS-060)
-- [X] T018 [US1] Implement Search and `GET /api/search` in `specview.py` per `contracts/http.md`: walk `specs/` on each request, `fnmatch` on lower-cased relative paths, wrap a pattern with no wildcard as `*pattern*`, sort by path, report `specs: false` when missing (traces: AIS-002, AIS-033, AIS-045, AIS-061, ART-016)
-- [X] T019 [US1] Implement the Search box script embedded in `specview.py`: call `/api/search`, list results as links, show "no matches" or "No specs folder found" underneath the box, leave the navigation view for an empty pattern (traces: AIS-002, AIS-040, AIS-060, AIS-061, ART-016)
-- [X] T020 [US1] Implement the document page route in `specview.py`: render the requested `.md` through the Path guard and renderer into the Page template, returning `404` with a message for a document removed or renamed since it was listed (traces: AIS-003, AIS-044, AIS-063)
+- [X] T015 [P] [US1] Write unit tests for glob search (plain word wrapped as `*word*`, wildcards, case-insensitivity, sort order, empty pattern, no `specs/`) in `tests/unit/test_search.py` (traces: AIS-051, AIS-033, AIS-061) (code: 2cceacc)
+- [X] T016 [P] [US1] Write integration tests that start the server on a free port against the fixture project and check the navigation view, search JSON, a rendered document page, breadcrumbs, `403` for a path above the start folder and a foreign Host header, and "No specs folder found" from a folder without `specs/`, in `tests/integration/test_navigation_and_search.py` (traces: AIS-052, AIS-053, AIS-060) (code: 2cceacc)
+- [X] T017 [US1] Implement the navigation view in `specview.py`: list folders and `.md` documents of `specs/` or a subfolder at request time, with breadcrumbs and "No specs folder found" under the search box when `specs/` is missing (traces: AIS-001, AIS-007, AIS-020, AIS-043, AIS-060) (code: 2cceacc)
+- [X] T018 [US1] Implement Search and `GET /api/search` in `specview.py` per `contracts/http.md`: walk `specs/` on each request, `fnmatch` on lower-cased relative paths, wrap a pattern with no wildcard as `*pattern*`, sort by path, report `specs: false` when missing (traces: AIS-002, AIS-033, AIS-045, AIS-061, ART-016) (code: 2cceacc)
+- [X] T019 [US1] Implement the Search box script embedded in `specview.py`: call `/api/search`, list results as links, show "no matches" or "No specs folder found" underneath the box, leave the navigation view for an empty pattern (traces: AIS-002, AIS-040, AIS-060, AIS-061, ART-016) (code: 2cceacc)
+- [X] T020 [US1] Implement the document page route in `specview.py`: render the requested `.md` through the Path guard and renderer into the Page template, returning `404` with a message for a document removed or renamed since it was listed (traces: AIS-003, AIS-044, AIS-063) (code: 2cceacc)
 
 **Checkpoint**: US1 is usable on its own: every document can be found and read.
 
@@ -86,14 +86,14 @@ description: "Task list for the rich specification viewer"
 
 **Independent Test**: in the fixture story, hovering a code from `s01` in `s02` shows its section and source; clicking opens it; the unresolved and twice-defined codes show a red error with an icon; `AIS` codes on `spec.md` show no error; codes on `specs/README.md` are plain text; a code defined only in `002-other` is not resolved in `001-demo`.
 
-- [X] T021 [P] [US2] Write unit tests for the Story index and reference rules (code forms, definition forms including tasks and challenge blocks, section boundaries, codes in code are not references, story scope, nested documents, link and copy aliases counted once, unresolved and ambiguous, documents directly in `specs/`) in `tests/unit/test_story_index.py` (traces: AIS-024, AIS-025, AIS-026, AIS-027, AIS-028, AIS-051, AIS-088, AIS-089)
-- [X] T022 [P] [US2] Write integration tests for embedded tooltip JSON, reference links and error spans, JSON escaping, and a tooltip updating after another story document changes, in `tests/integration/test_references.py` (traces: AIS-052, AIS-053, AIS-059)
-- [X] T023 [US2] Implement the Story index in `specview.py` per `data-model.md`: walk the story at every depth through the Path guard, detect link and identical-copy aliases, collect definitions (items, headings, tasks, `eil:challenge` blocks with their answers) with their defining-section HTML, and build no index for documents directly in `specs/` (traces: AIS-009, AIS-022, AIS-024, AIS-025, AIS-026, AIS-048, AIS-069, AIS-088, AIS-089)
-- [X] T024 [US2] Implement the story-wide render cache in `specview.py`: key on every document's relative path, `mtime_ns` and size, guarded by a lock, so any change in the story re-renders its pages on the next request (traces: AIS-006, AIS-029, AIS-050)
-- [X] T025 [US2] Implement the Reference marker in `specview.py`: mark each code outside code, as a link to its defining anchor when resolved, or a red `<span>` with an error icon when unresolved or ambiguous; leave codes unmarked on documents directly in `specs/` (traces: AIS-008, AIS-012, AIS-013, AIS-027, AIS-028, AIS-064, ART-015, ART-018)
-- [X] T026 [US2] Embed the tooltip JSON for the codes each page uses in `specview.py`, with `<`, `>` and `&` escaped, replacing diagrams in sections with a note (traces: AIS-010, AIS-023, AIS-032, AIS-049, AIS-059, ART-015)
-- [X] T027 [US2] Implement the Tooltip controller script embedded in `specview.py`: on hover show the section and document name, capped in size and scrolling inside; explain unresolved and ambiguous codes; show challenge text, target, status and answer; open no tooltip for codes inside a tooltip; hide when the pointer leaves code and tooltip (traces: AIS-010, AIS-011, AIS-021, AIS-022, AIS-040, ART-015)
-- [X] T028 [US2] Implement reference following in `specview.py`: resolved codes link to `/specs/<path>#<anchor>` (the Challenges section for a challenge code), scroll within the same document, and error codes do not navigate (traces: AIS-012, AIS-022, AIS-064, ART-018)
+- [X] T021 [P] [US2] Write unit tests for the Story index and reference rules (code forms, definition forms including tasks and challenge blocks, section boundaries, codes in code are not references, story scope, nested documents, link and copy aliases counted once, unresolved and ambiguous, documents directly in `specs/`) in `tests/unit/test_story_index.py` (traces: AIS-024, AIS-025, AIS-026, AIS-027, AIS-028, AIS-051, AIS-088, AIS-089) (code: 2cceacc)
+- [X] T022 [P] [US2] Write integration tests for embedded tooltip JSON, reference links and error spans, JSON escaping, and a tooltip updating after another story document changes, in `tests/integration/test_references.py` (traces: AIS-052, AIS-053, AIS-059) (code: 2cceacc)
+- [X] T023 [US2] Implement the Story index in `specview.py` per `data-model.md`: walk the story at every depth through the Path guard, detect link and identical-copy aliases, collect definitions (items, headings, tasks, `eil:challenge` blocks with their answers) with their defining-section HTML, and build no index for documents directly in `specs/` (traces: AIS-009, AIS-022, AIS-024, AIS-025, AIS-026, AIS-048, AIS-069, AIS-088, AIS-089) (code: 2cceacc)
+- [X] T024 [US2] Implement the story-wide render cache in `specview.py`: key on every document's relative path, `mtime_ns` and size, guarded by a lock, so any change in the story re-renders its pages on the next request (traces: AIS-006, AIS-029, AIS-050) (code: 2cceacc)
+- [X] T025 [US2] Implement the Reference marker in `specview.py`: mark each code outside code, as a link to its defining anchor when resolved, or a red `<span>` with an error icon when unresolved or ambiguous; leave codes unmarked on documents directly in `specs/` (traces: AIS-008, AIS-012, AIS-013, AIS-027, AIS-028, AIS-064, ART-015, ART-018) (code: 2cceacc)
+- [X] T026 [US2] Embed the tooltip JSON for the codes each page uses in `specview.py`, with `<`, `>` and `&` escaped, replacing diagrams in sections with a note (traces: AIS-010, AIS-023, AIS-032, AIS-049, AIS-059, ART-015) (code: 2cceacc)
+- [X] T027 [US2] Implement the Tooltip controller script embedded in `specview.py`: on hover show the section and document name, capped in size and scrolling inside; explain unresolved and ambiguous codes; show challenge text, target, status and answer; open no tooltip for codes inside a tooltip; hide when the pointer leaves code and tooltip (traces: AIS-010, AIS-011, AIS-021, AIS-022, AIS-040, ART-015) (code: 2cceacc)
+- [X] T028 [US2] Implement reference following in `specview.py`: resolved codes link to `/specs/<path>#<anchor>` (the Challenges section for a challenge code), scroll within the same document, and error codes do not navigate (traces: AIS-012, AIS-022, AIS-064, ART-018) (code: 2cceacc)
 
 **Checkpoint**: US1 and US2 both work independently.
 
@@ -105,9 +105,9 @@ description: "Task list for the rich specification viewer"
 
 **Independent Test**: the fixture `s02` page draws each valid diagram, including C4 and ER; the invalid block shows an error; with the network off every diagram shows an error while text and tooltips still work.
 
-- [X] T029 [P] [US3] Write an integration test that Mermaid blocks are emitted as escaped `<pre class="mermaid-src">` elements and that the page imports only the pinned-major Mermaid URL as outside script, in `tests/integration/test_diagrams.py` (traces: AIS-031, AIS-042, AIS-047, AIS-052)
-- [X] T030 [US3] Emit each fenced `mermaid` block from the renderer in `specview.py` as `<pre class="mermaid-src">` with its source escaped (traces: AIS-014, AIS-030)
-- [X] T031 [US3] Implement the Diagram loader module script embedded in `specview.py`: import `mermaid@11` from jsDelivr, `initialize({startOnLoad: false})`, render each block with `mermaid.render()` in `try`/`catch`, replace a failed block with an error message, and every block when the import fails (traces: AIS-014, AIS-015, AIS-016, AIS-031, AIS-047, AIS-062, ART-017)
+- [X] T029 [P] [US3] Write an integration test that Mermaid blocks are emitted as escaped `<pre class="mermaid-src">` elements and that the page imports only the pinned-major Mermaid URL as outside script, in `tests/integration/test_diagrams.py` (traces: AIS-031, AIS-042, AIS-047, AIS-052) (code: 2cceacc)
+- [X] T030 [US3] Emit each fenced `mermaid` block from the renderer in `specview.py` as `<pre class="mermaid-src">` with its source escaped (traces: AIS-014, AIS-030) (code: 2cceacc)
+- [X] T031 [US3] Implement the Diagram loader module script embedded in `specview.py`: import `mermaid@11` from jsDelivr, `initialize({startOnLoad: false})`, render each block with `mermaid.render()` in `try`/`catch`, replace a failed block with an error message, and every block when the import fails (traces: AIS-014, AIS-015, AIS-016, AIS-031, AIS-047, AIS-062, ART-017) (code: 2cceacc)
 
 **Checkpoint**: all three stories work independently.
 
@@ -115,9 +115,9 @@ description: "Task list for the rich specification viewer"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [X] T032 Run `python3 -m unittest discover -s tests` and fix any failure in `specview.py` (traces: AIS-051, AIS-052, AIS-053)
-- [X] T033 Walk the browser scenarios of `specs/001-rich-spec-viewer/quickstart.md` (tooltips, scrolling, no nested tooltips, every diagram type, offline and invalid diagrams, readability) and fix what fails in `specview.py` (traces: AIS-054, AIS-005)
-- [X] T034 [P] Confirm by review that `specview.py` imports only the standard library, writes no file, and makes no outside request from the server (traces: AIS-042, AIS-057, AIS-072, AIS-073)
+- [X] T032 Run `python3 -m unittest discover -s tests` and fix any failure in `specview.py` (traces: AIS-051, AIS-052, AIS-053) (code: 2cceacc)
+- [X] T033 Walk the browser scenarios of `specs/001-rich-spec-viewer/quickstart.md` (tooltips, scrolling, no nested tooltips, every diagram type, offline and invalid diagrams, readability) and fix what fails in `specview.py` (traces: AIS-054, AIS-005) (code: 2cceacc)
+- [X] T034 [P] Confirm by review that `specview.py` imports only the standard library, writes no file, and makes no outside request from the server (traces: AIS-042, AIS-057, AIS-072, AIS-073) (code: 2cceacc)
 
 ---
 
@@ -161,8 +161,8 @@ description: "Task list for the rich specification viewer"
 ```json
 {
   "stage": "tasks",
-  "evaluated_at": "2026-09-29T11:20:58Z",
-  "fingerprint": "sha256:d3987b077c1a930a5041e961a5aa42b7957873e81dd819ef231e137e002876f7",
+  "evaluated_at": "2026-09-29T11:30:36Z",
+  "fingerprint": "sha256:95f3b5d6051704e0580cf86b7d638a74119a812ce13f717de602a9096670de7d",
   "criteria": [
     {
       "id": "TSK-G01",

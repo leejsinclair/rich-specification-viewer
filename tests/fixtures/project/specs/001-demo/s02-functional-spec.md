@@ -18,6 +18,12 @@ Codes in code are not references: `REQ-001`, and a checklist item CHK-001 is not
 |---|---|
 | REQ-001 | FR-001, FR-003 |
 
+## Use Cases and Scenarios
+
+### UC-001: Developer reads a document
+
+- **Main flow**: the page is rendered and shown.
+
 ## Diagrams
 
 ```mermaid

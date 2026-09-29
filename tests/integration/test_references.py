@@ -17,7 +17,6 @@ class ReferencesTest(ServerTestCase):
         self.assertEqual(refs["REQ-002"]["state"], "resolved")
         self.assertEqual(refs["REQ-002"]["doc"], "s01-requirements.md")
         self.assertIn("Hovering a code shows its definition.", refs["REQ-002"]["html"])
-        self.assertIn("the developer opens a page", refs["UC-001"]["html"])  # a heading's whole section
         self.assertEqual(refs["REQ-900"], {"state": "unresolved"})  # defined only in another story
 
     def test_errors_and_same_document_codes(self):  # AC-6, FR-011
@@ -32,6 +31,14 @@ class ReferencesTest(ServerTestCase):
         status, page = self.get(path)
         self.assertEqual(status, 200)
         self.assertIn('id="%s"' % anchor, page)
+
+    def test_heading_expanding_an_item_is_not_a_second_definition(self):  # AC-21, FR-026
+        page = self.get("/specs/001-demo/s02-functional-spec.md")[1]
+        ref = self.refs(page)["UC-001"]
+        self.assertEqual(ref["state"], "resolved")
+        self.assertEqual(ref["doc"], "s01-requirements.md")
+        self.assertIn("(actor: Developer; outcome: the page is shown)", ref["html"])
+        self.assertIn('<h3 id="uc-001">', page)  # the expanding heading keeps its anchor
 
     def test_challenge_code(self):  # AC-15, FR-022
         ref = self.refs(self.get("/specs/001-demo/s02-functional-spec.md")[1])["CH-001"]

@@ -18,7 +18,7 @@
 | Requirement | Functional requirements |
 |---|---|
 | REQ-001 | FR-004, FR-005, FR-006, FR-007, FR-019, NFR-001, NFR-002 |
-| REQ-002 | FR-008, FR-009, FR-010, FR-011, FR-021, FR-022, FR-023, FR-024, FR-025 |
+| REQ-002 | FR-008, FR-009, FR-010, FR-011, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026 | [ai-draft]
 | REQ-003 | FR-001, FR-002, FR-003, FR-018, FR-020 |
 | REQ-004 | FR-014, FR-015, FR-016, NFR-003 |
 | REQ-005 | FR-017, NFR-003 |
@@ -83,6 +83,8 @@ The table is a summary; the `(traces: ...)` clause on each item is authoritative
 
 **FR-025**: The system shall treat every `.md` file at any depth under a story folder as a document of that story when resolving codes. (traces: REQ-002, UC-001)
 
+**FR-026**: The system shall treat a heading for a code that is already defined as an item elsewhere in the story as an expansion of that definition, not a second definition: the item remains the code's definition for its tooltip and link, and the heading keeps its own anchor on its page. (traces: REQ-002, REQ-007, UC-001) [ai-draft]
+
 ## Use Cases and Scenarios
 
 ### UC-001: Developer reads a document with its references explained
@@ -124,10 +126,10 @@ The table is a summary; the `(traces: ...)` clause on each item is authoritative
 ## Business Rules
 
 - **BR-1 Reference code**: a code is an upper-case prefix, a hyphen and a number used in a document to point at an item or section. Every code form that Spec Kit and the engineer-in-the-loop documents produce is a reference code: `REQ`, `UC`, `OQ`, `ART`, `CH`, `FR`, `NFR`, `SC`, `DEC`, `AIS`, `EVD` (each as `PREFIX-001`), decisions written as `D-01`, and tasks written as `T001`.
-- **BR-2 Definition**: a code is defined where a document introduces it rather than mentions it: a line that starts with the code in bold followed by a colon (`**FR-001**: ...`, optionally as a list item), a heading that starts with the code, a task line (`- [ ] T001 ...`), or a recorded challenge block whose `id` is the code.
+- **BR-2 Definition**: a code is defined where a document introduces it rather than mentions it: a line that starts with the code in bold followed by a colon (`**FR-001**: ...`, optionally as a list item), a heading that starts with the code, a task line (`- [ ] T001 ...`), or a recorded challenge block whose `id` is the code. A heading for a code already defined as an item elsewhere in the story expands that item and is not a further definition (FR-026). [ai-draft]
 - **BR-3 Defining section**: the whole section of a definition is the content from the defining line up to, but not including, the next definition or the next heading of the same or higher level, whichever comes first. For `FR-003` it is FR-003's own paragraph, not the whole Functional Requirements section.
 - **BR-4 Story scope**: codes resolve only within the story folder that holds the viewed document, including its subfolders (FR-009, FR-025); the same code in another story is ignored.
-- **BR-5 Unresolved**: a code with no definition in the story is unresolved; a code with definitions in two or more documents of the story is ambiguous, counting an alias and its target as one document (FR-024). Both are errors (FR-013).
+- **BR-5 Unresolved**: a code with no definition in the story is unresolved; a code with definitions in two or more documents of the story is ambiguous, counting an alias and its target as one document (FR-024) and not counting a heading that expands an item (FR-026). Both are errors (FR-013). [ai-draft]
 - **BR-6 Not a reference**: a code inside inline code or a fenced code block, and the code on its own defining line, is not treated as a reference.
 
 ## Inputs
@@ -190,6 +192,7 @@ A document page is **current** when it reflects the saved Markdown. When the Mar
 - **AC-18**: In a story where `spec.md` links to `s04-ai-spec.md`, hovering an `AIS` code shows its section and no error; the same holds when `spec.md` is a byte-for-byte copy instead of a link. (FR-024)
 - **AC-19**: A code defined in `checklists/requirements.md` inside a story folder resolves when referenced from a document at the top of that story. (FR-025)
 - **AC-20**: Opening `specs/README.md` shows its codes as plain text, with no tooltips and no error highlighting. (FR-009)
+- **AC-21**: A use case defined as an item `UC-001` in `s01-requirements.md` and expanded under a heading `### UC-001: …` in `s02-functional-spec.md` shows no error; its tooltip shows the `s01` item, and the `s02` heading can still be linked to. (FR-026) [ai-draft]
 - **AC-3**: Opening `s01-requirements.md` of a story shows its headings, lists, tables and code blocks formatted, not as Markdown source. (FR-003, FR-004)
 - **AC-4**: Hovering over `REQ-001` in the story's `s02-functional-spec.md` shows the whole REQ-001 definition from `s01-requirements.md` and names that document. (FR-008, FR-010)
 - **AC-5**: Clicking `REQ-001` opens `s01-requirements.md` at REQ-001. (FR-012)
@@ -557,8 +560,8 @@ sequenceDiagram
 ```json
 {
   "stage": "functional",
-  "evaluated_at": "2026-09-27T12:29:50Z",
-  "fingerprint": "sha256:96e1a6bca50be78ec8a72f4517714738a89178d8fcbc88ec7ae0e6278bf27c0c",
+  "evaluated_at": "2026-09-29T11:33:48Z",
+  "fingerprint": "sha256:a970ee4abc37537edb05a3ea0b49c9ca3f9a16e4eacf3979af3d8ab7b6caba65",
   "criteria": [
     {
       "id": "FUN-G01",
@@ -618,7 +621,7 @@ sequenceDiagram
       "id": "FUN-G10",
       "kind": "judgment",
       "status": "met",
-      "reason": "AI assessment: Each of AC-1 to AC-20 names a concrete action and an observable result, including aliases (AC-18), nested story documents (AC-19) and documents outside any story (AC-20)."
+      "reason": "AI assessment: Each of AC-1 to AC-21 names a concrete action and an observable result, including headings that expand an earlier item (AC-21)."
     },
     {
       "id": "FUN-G11",
@@ -653,8 +656,8 @@ sequenceDiagram
     {
       "id": "FUN-G16",
       "kind": "structural",
-      "status": "met",
-      "reason": ""
+      "status": "not-met",
+      "reason": "the check was taken on an earlier version of this document; take it again"
     }
   ],
   "assessment": {
@@ -703,6 +706,11 @@ sequenceDiagram
       "code": "artifact-unregistered",
       "where": "ART-011",
       "message": "ART-011 has no mermaid fence or eil:artifact record"
+    },
+    {
+      "code": "comprehension-stale",
+      "where": "s02-functional-spec.md",
+      "message": "the check was taken on an earlier version of this document; take it again"
     }
   ]
 }

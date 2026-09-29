@@ -8,8 +8,8 @@
 
 ## Status
 
-- Current stage: verification
-- Overall status: not-started
+- Current stage: functional
+- Overall status: needs-re-review
 
 ## Documents
 
@@ -17,9 +17,9 @@
 |---|---|
 | [s00-README.md](s00-README.md) | generated |
 | [s01-requirements.md](s01-requirements.md) | approved |
-| [s02-functional-spec.md](s02-functional-spec.md) | approved |
-| [s03-technical-spec.md](s03-technical-spec.md) | approved |
-| [s04-ai-spec.md](s04-ai-spec.md) | in-review |
+| [s02-functional-spec.md](s02-functional-spec.md) | needs-re-review |
+| [s03-technical-spec.md](s03-technical-spec.md) | needs-re-review |
+| [s04-ai-spec.md](s04-ai-spec.md) | draft |
 | [s05-plan.md](s05-plan.md) | in-review |
 | [s06-tasks.md](s06-tasks.md) | in-review |
 | s07-verification.md | not-started |
@@ -44,7 +44,7 @@
 | ART-013 | c4-component | technical | ok | [Inside the viewer server](s03-technical-spec.md) |
 | ART-014 | c4-component | technical | ok | [Inside the viewer page](s03-technical-spec.md) |
 | ART-015 | sequence | technical | ok | [Reading a document with its references explained](s03-technical-spec.md) |
-| ART-016 | sequence | technical | ok | [Finding a document by search](s03-technical-spec.md) |
+| ART-016 | sequence | technical | changed-since-approval | [Finding a document by search](s03-technical-spec.md) |
 | ART-017 | sequence | technical | ok | [Drawing diagrams](s03-technical-spec.md) |
 | ART-018 | sequence | technical | ok | [Following a reference](s03-technical-spec.md) |
 
@@ -53,14 +53,12 @@
 | Stage | Approved by | At | Fingerprint | Comprehension |
 |---|---|---|---|---|
 | requirements | Lee Sinclair | 2026-09-27T11:32:19Z | fccddf46c6af |  |
-| functional | Lee Sinclair | 2026-09-27T12:30:42Z | 96e1a6bca50b | understood 4 · coached 1 |
-| technical | Lee Sinclair | 2026-09-29T10:58:36Z | 82b669a5c901 | coached 1 · revealed 1 · not applicable 3 |
 
 ## Outstanding
 
 - Open questions: OQ-018
 - Open challenges: none
-- Pending clarifications: none
+- Pending clarifications: AIS-090
 - Overrides: OVR-001 (functional FUN-G15 by Lee Sinclair)
 - Issues: none
 

@@ -85,6 +85,8 @@
 
 **AIS-089**: Every `.md` file at any depth under a story folder belongs to that story when resolving codes. (traces: FR-025)
 
+**AIS-090**: A heading for a code already defined as an item elsewhere in the story expands that definition rather than defining it a second time: the item is the code's definition (its tooltip and link target), and the heading still gets its own anchor. (traces: FR-026) [pending-clarification]
+
 ## Technical Decisions
 
 **AIS-029**: Serve every page from one Python process that renders the requested document on each request, caching by the modification time and size of every document in the story. (traces: DEC-001)

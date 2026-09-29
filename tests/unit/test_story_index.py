@@ -70,6 +70,13 @@ class StoryIndexTest(unittest.TestCase):
         self.assertEqual(self.index.state("AIS-001"), "resolved")
         self.assertEqual(self.index.aliases, {"001-demo/plan.md": "001-demo/s04-ai-spec.md", "001-demo/spec.md": "001-demo/s04-ai-spec.md"})
 
+    def test_heading_definition_carries_its_whole_section(self):  # BR-3
+        self.assertIn("the developer opens a page", self.index.definitions["UC-002"][0].section_html)
+
+    def test_heading_expanding_an_item_elsewhere_is_not_a_definition(self):  # FR-026
+        self.assertEqual(self.index.state("UC-001"), "resolved")
+        self.assertEqual([d.kind for d in self.index.definitions["UC-001"]], ["item"])
+
     def test_unresolved_and_ambiguous(self):  # BR-5
         self.assertEqual(self.index.state("FR-777"), "unresolved")
         self.assertEqual(self.index.state("UC-050"), "ambiguous")

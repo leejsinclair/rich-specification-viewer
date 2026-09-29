@@ -34,7 +34,7 @@ One Python process, the **Viewer server**, serves every page over HTTP, on `127.
 - **Request handler**: first refuses, with `403`, any request whose `Host` header names anything other than `localhost` or `127.0.0.1` (any port, since port forwarding may change it) (CH-016); then maps URLs to responses: `/` and folder paths return a navigation view, `*.md` paths return a document page, `/api/search?q=` returns JSON results. It passes every path through the Path guard first. Built on `http.server.ThreadingHTTPServer`.
 - **Path guard**: resolves the requested path with `Path.resolve()` (following symbolic links) and refuses it unless it is inside `<start>/specs` (FR-018).
 - **Markdown renderer**: a line-based block parser followed by an inline pass (DEC-002). It drops HTML comments and `eil:` blocks and regions from the output (FR-019), records each definition (BR-2) with the HTML of its defining section (BR-3), and gives headings and definitions stable anchors.
-- **Story index**: for a story folder, walks it at every depth and parses each `.md` file (FR-025), building a map from each code to its definitions, and reads `eil:challenge` blocks into challenge definitions (FR-022). A file that resolves, through a symbolic link, to a document already read, or whose content is identical to one already read, is counted as that same document, so an alias such as `spec.md` does not make its codes ambiguous (FR-024). A code with none or several definitions is unresolved or ambiguous (BR-5). A document directly in `specs/`, in no story folder, gets no index and no codes are marked on its page (FR-009). On each request it lists the story's documents and their modification times and sizes; this list is the cache key for both the index and every rendered page of the story, so a change to any document of the story, or a document added or removed, re-renders the pages of that story (CH-015). It opens every document through the Path guard, so a symbolic link in a story folder that resolves outside `specs/` is skipped (CH-017).
+- **Story index**: for a story folder, walks it at every depth and parses each `.md` file (FR-025), building a map from each code to its definitions, and reads `eil:challenge` blocks into challenge definitions (FR-022). A file that resolves, through a symbolic link, to a document already read, or whose content is identical to one already read, is counted as that same document, so an alias such as `spec.md` does not make its codes ambiguous (FR-024). A heading for a code that some other document of the story defines as an item is recorded as an anchor only, not a definition, so the item stays the code's definition (FR-026). A code with none or several definitions is unresolved or ambiguous (BR-5). A document directly in `specs/`, in no story folder, gets no index and no codes are marked on its page (FR-009). On each request it lists the story's documents and their modification times and sizes; this list is the cache key for both the index and every rendered page of the story, so a change to any document of the story, or a document added or removed, re-renders the pages of that story (CH-015). It opens every document through the Path guard, so a symbolic link in a story folder that resolves outside `specs/` is skipped (CH-017). [ai-draft]
 - **Reference marker**: in the rendered page, wraps each code outside inline code and code blocks (BR-6) in a link element carrying the code, its target anchor or its error state (FR-008, FR-012, FR-013), and collects the tooltip JSON for the codes used on the page (DEC-004). An unresolved or ambiguous code is rendered as a `<span>`, not a link, so clicking it does not navigate (FR-013, CH-018).
 - **Search**: walks `specs/`, matches each path relative to `specs/` with `fnmatch`, lower-cased, wrapping a pattern that has no wildcard as `*term*`, and sorts the results by path (DEC-005).
 - **Page template**: assembles the breadcrumb, the search box, the rendered body, the tooltip JSON, the inline CSS and the inline script (FR-005, FR-020, NFR-001). When the start folder has no `specs/` folder, every page it builds shows "No specs folder found" underneath the search box (AC-17).
@@ -279,25 +279,25 @@ sequenceDiagram
   end
 ```
 
-**ART-016**: Finding a document by search (traces: UC-002, FR-002, DEC-005)
+**ART-016**: Finding a document by search (traces: UC-002, FR-002, DEC-005) [ai-draft]
 
 ```mermaid
 sequenceDiagram
   actor Developer
-  participant Box as Search box
+  participant SearchBox as Search box
   participant Handler as Request handler
   participant Search
-  Developer->>Box: Type a glob pattern
-  Box->>Handler: GET /api/search?q=pattern
+  Developer->>SearchBox: Type a glob pattern
+  SearchBox->>Handler: GET /api/search?q=pattern
   Handler->>Search: Match pattern
   alt no specs folder
     Search-->>Handler: specs false
-    Handler-->>Box: JSON
-    Box-->>Developer: "No specs folder found" under the box
+    Handler-->>SearchBox: JSON
+    SearchBox-->>Developer: "No specs folder found" under the box
   else matches or none
     Search-->>Handler: Sorted results
-    Handler-->>Box: JSON
-    Box-->>Developer: Results, or no matches
+    Handler-->>SearchBox: JSON
+    SearchBox-->>Developer: Results, or no matches
   end
 ```
 
@@ -486,8 +486,8 @@ sequenceDiagram
 ```json
 {
   "stage": "technical",
-  "evaluated_at": "2026-09-29T10:56:20Z",
-  "fingerprint": "sha256:82b669a5c901ca69617f1c6ad544604af763c2b1448982888b1d17f7d7907aee",
+  "evaluated_at": "2026-09-29T11:33:48Z",
+  "fingerprint": "sha256:c106c0607b28e0df3ccbc641532e3b44579b26b08d1252d0ec97f452d1f4c32b",
   "criteria": [
     {
       "id": "TEC-G01",
@@ -600,8 +600,8 @@ sequenceDiagram
     {
       "id": "TEC-G19",
       "kind": "structural",
-      "status": "met",
-      "reason": ""
+      "status": "not-met",
+      "reason": "the check was taken on an earlier version of this document; take it again"
     }
   ],
   "assessment": {
@@ -618,7 +618,13 @@ sequenceDiagram
     ],
     "untestable": []
   },
-  "findings": []
+  "findings": [
+    {
+      "code": "comprehension-stale",
+      "where": "s03-technical-spec.md",
+      "message": "the check was taken on an earlier version of this document; take it again"
+    }
+  ]
 }
 ```
 <!-- eil:end assessment -->

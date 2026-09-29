@@ -12,7 +12,9 @@
 
 ## Use Cases
 
-### UC-001: Developer reads a document
+**UC-001**: Developer reads a document (actor: Developer; outcome: the page is shown).
+
+### UC-002: Developer opens a page
 
 - **Trigger**: the developer opens a page.
 - **Outcome**: the page is shown.
