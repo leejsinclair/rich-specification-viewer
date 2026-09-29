@@ -1,0 +1,1 @@
+../../../.specify/extensions/eil/.specify-dev/agent-commands/claude/speckit-eil-comprehend/SKILL.md

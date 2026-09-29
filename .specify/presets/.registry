@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "engineer-in-the-loop": {
+      "version": "0.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:1ba1818f3816c1557eaeb95b875f02aa054b402659dc19f68e37c05516a9502c",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.specify",
+          "speckit.clarify",
+          "speckit.plan",
+          "speckit.tasks",
+          "speckit.analyze",
+          "speckit.checklist",
+          "speckit.implement"
+        ]
+      },
+      "registered_skills": {
+        "claude": [
+          "speckit-specify",
+          "speckit-clarify",
+          "speckit-plan",
+          "speckit-tasks",
+          "speckit-analyze",
+          "speckit-checklist",
+          "speckit-implement"
+        ]
+      },
+      "installed_at": "2026-09-28T21:37:20.556522+00:00"
+    }
+  }
+}

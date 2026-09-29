@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "eil": {
+      "version": "0.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:eae028899ce2be58f3efe2c744042381a04f29c7a4ce68c05666b4363abc64f3",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.eil.requirements",
+          "speckit.eil-1-requirements",
+          "speckit.eil.functional",
+          "speckit.eil-2-functional",
+          "speckit.eil.technical",
+          "speckit.eil-3-technical",
+          "speckit.eil.ai-spec",
+          "speckit.eil-4-ai-spec",
+          "speckit.eil.5-plan",
+          "speckit.eil.6-tasks",
+          "speckit.eil.resolve",
+          "speckit.eil.verify",
+          "speckit.eil-7-verify",
+          "speckit.eil.complete",
+          "speckit.eil-8-complete",
+          "speckit.eil.challenge",
+          "speckit.eil.abbreviate",
+          "speckit.eil.trace",
+          "speckit.eil.comprehend",
+          "speckit.eil.artifact",
+          "speckit.eil.approve",
+          "speckit.eil.override",
+          "speckit.eil.amend",
+          "speckit.eil.next",
+          "speckit.eil.status",
+          "speckit.eil-0-status"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-09-28T21:37:20.359299+00:00"
+    }
+  }
+}

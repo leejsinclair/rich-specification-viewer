@@ -1,0 +1,41 @@
+installed:
+- eil
+settings:
+  auto_execute_hooks: true
+hooks:
+  after_clarify:
+  - extension: eil
+    command: speckit.eil.status
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.eil.status?
+    description: Refresh mirrors and overview after clarification
+    condition: null
+  after_plan:
+  - extension: eil
+    command: speckit.eil.status
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.eil.status?
+    description: Refresh mirrors and overview after planning
+    condition: null
+  after_tasks:
+  - extension: eil
+    command: speckit.eil.status
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.eil.status?
+    description: Refresh mirrors and overview after task generation
+    condition: null
+  after_implement:
+  - extension: eil
+    command: speckit.eil.status
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.eil.status?
+    description: Refresh overview after implementation
+    condition: null
