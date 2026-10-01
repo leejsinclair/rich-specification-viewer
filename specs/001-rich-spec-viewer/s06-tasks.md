@@ -118,6 +118,7 @@ description: "Task list for the rich specification viewer"
 - [X] T032 Run `python3 -m unittest discover -s tests` and fix any failure in `specview.py` (traces: AIS-051, AIS-052, AIS-053) (code: 2cceacc)
 - [X] T033 Walk the browser scenarios of `specs/001-rich-spec-viewer/quickstart.md` (tooltips, scrolling, no nested tooltips, every diagram type, offline and invalid diagrams, readability) and fix what fails in `specview.py` (traces: AIS-054, AIS-005) (code: 2cceacc)
 - [X] T034 [P] Confirm by review that `specview.py` imports only the standard library, writes no file, and makes no outside request from the server (traces: AIS-042, AIS-057, AIS-072, AIS-073) (code: 2cceacc)
+- [X] T035 [US2] Treat a heading for a code that another story document defines as an item as an anchor only, in the Story index of `specview.py`, with unit and integration tests (traces: AIS-090, ART-013) (code: bd7a0d5)
 
 ---
 
@@ -161,8 +162,8 @@ description: "Task list for the rich specification viewer"
 ```json
 {
   "stage": "tasks",
-  "evaluated_at": "2026-09-29T11:30:36Z",
-  "fingerprint": "sha256:95f3b5d6051704e0580cf86b7d638a74119a812ce13f717de602a9096670de7d",
+  "evaluated_at": "2026-09-29T11:34:08Z",
+  "fingerprint": "sha256:08c72782132ccf2dd1c22e1e1f5c5208e68bc39a74cc03814904b19ff90e8af0",
   "criteria": [
     {
       "id": "TSK-G01",

@@ -56,7 +56,7 @@
 
 ## Outstanding
 
-- Open questions: OQ-018
+- Open questions: none
 - Open challenges: none
 - Pending clarifications: AIS-090
 - Overrides: OVR-001 (functional FUN-G15 by Lee Sinclair)
