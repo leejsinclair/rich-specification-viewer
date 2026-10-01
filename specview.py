@@ -572,6 +572,55 @@ class StoryIndex:
         return "resolved" if len(found) == 1 else "ambiguous"
 
 
+# ---------------------------------------------------------------------------------------------
+# Reading order of a story's documents (story 002: DEC-003, DEC-004, DEC-006)
+# ---------------------------------------------------------------------------------------------
+
+STAGE_RE = re.compile(r"s([0-9]{2})-(.+)\.(?i:md)")
+DIGITS_RE = re.compile(r"([0-9]+)")
+
+
+def stage_of(file_name: str) -> tuple[str, str] | None:
+    """The stage number and name of a file named ``sNN-name.md``, else None (FR-004)."""
+    match = STAGE_RE.fullmatch(file_name)
+    return (match.group(1), match.group(2)) if match else None
+
+
+def natural_key(text: str) -> tuple:
+    """Casefolded text with each run of digits compared by value; equal names fall back to the exact text."""
+    pieces = DIGITS_RE.split(text.casefold())
+    return tuple(int(piece) if i % 2 else piece for i, piece in enumerate(pieces)), text
+
+
+def reading_order_key(parts: tuple[str, ...] | list[str], staged: bool) -> tuple:
+    """One sort key: a part per folder, then the document part, so a folder's documents come before
+    those of its nested folders and, within a folder, staged documents before unstaged ones (FR-007 to FR-009)."""
+    folders = tuple((1, natural_key(name)) for name in parts[:-1])
+    return folders + ((0, 0 if staged else 1, natural_key(parts[-1])),)
+
+
+def entry_label(parts: tuple[str, ...] | list[str]) -> str:
+    """The label of a document from its path inside the story folder (FR-003 to FR-005)."""
+    name = parts[-1]
+    stage = stage_of(name)
+    if stage is not None:
+        text = "[stage %s: %s]" % stage
+        return "/".join([*parts[:-1], text])
+    stem = name[:-3]
+    if not stem:
+        return "/".join([*parts[:-1], "[ref doc: blank]"])
+    return "/".join([*parts[:-1], stem]) + " [ref doc: %s]" % stem
+
+
+@dataclass
+class ReadingEntry:
+    path: Path
+    parts: tuple[str, ...]
+    resolved: Path
+    aliases: list[str] = field(default_factory=list)
+    current: bool = False
+
+
 class Viewer:
     def __init__(self, start: Path):
         self.guard = PathGuard(start)
@@ -701,6 +750,8 @@ class Viewer:
                 )
 
         body = render_markdown(text, RenderContext(marker=marker))
+        if story is not None:
+            body += self.reading_order(story, rel)
         title = parts_title(rel)
         return page_html(title, breadcrumbs(rel, is_dir=False), body, refs, self.guard.has_specs)
 
@@ -717,6 +768,79 @@ class Viewer:
             "href": doc_url(d.document) + "#" + d.anchor,
             "html": d.section_html,
         }
+
+    # -- reading order (story 002) ------------------------------------------------------------
+
+    def reading_order(self, story: str, current_rel: str) -> str:
+        """The "Documents in reading order" section for a document of a story, as HTML (DEC-001)."""
+        folder = self.guard.specs / story
+        story_root = self.guard.resolve(folder)
+        if story_root is None:
+            return ""
+        candidates: list[ReadingEntry] = []
+        for path in self._markdown_files(folder):
+            resolved = self.guard.resolve(path)
+            try:
+                listed = resolved is not None and resolved.is_file()
+            except OSError:
+                listed = False
+            if listed:
+                candidates.append(ReadingEntry(path, path.relative_to(folder).parts, resolved))
+
+        def is_alias(entry: ReadingEntry) -> bool:
+            return (
+                entry.path.name in ALIAS_NAMES
+                and entry.path.is_symlink()
+                and entry.resolved.is_relative_to(story_root)
+                and stage_of(entry.resolved.name) is not None
+            )
+
+        sources: dict[Path, ReadingEntry] = {}
+        for entry in sorted(candidates, key=lambda e: (e.path.is_symlink(), e.parts)):
+            if not is_alias(entry):
+                sources.setdefault(entry.resolved, entry)
+        entries: list[ReadingEntry] = []
+        alias_of: dict[str, ReadingEntry] = {}
+        for entry in candidates:
+            source = sources.get(entry.resolved) if is_alias(entry) else None
+            if source is None:
+                entries.append(entry)
+            else:
+                source.aliases.append(entry.path.name)
+                alias_of[self.rel(entry.path)] = source
+
+        by_rel = {self.rel(entry.path): entry for entry in entries}
+        current = alias_of.get(current_rel) or by_rel.get(current_rel)
+        if current is None:  # reached through a symbolic link to a folder, which the walk does not enter
+            viewed = self.guard.specs / current_rel
+            resolved = self.guard.resolve(viewed)
+            if resolved is not None and resolved.is_file() and viewed.is_relative_to(folder):
+                current = ReadingEntry(viewed, viewed.relative_to(folder).parts, resolved)
+                entries.append(current)
+        if not entries:
+            return ""
+        if current is not None:
+            current.current = True
+        entries.sort(key=lambda e: reading_order_key(e.parts, stage_of(e.parts[-1]) is not None))
+
+        items = []
+        for entry in entries:
+            label = esc(entry_label(entry.parts))
+            if entry.current:
+                core = '<span aria-current="page">%s</span>' % label
+            else:
+                target = self.rel(entry.path)
+                if not entry.resolved.is_relative_to(story_root):
+                    real = self.rel(entry.resolved)
+                    if "/" in real:  # a document of another story is opened under its own path (FR-013)
+                        target = real
+                core = '<a href="%s">%s</a>' % (esc(doc_url(target)), label)
+            aliases = "".join(" (%s)" % esc(name) for name in sorted(entry.aliases, key=natural_key))
+            items.append("<li>%s%s</li>" % (core, aliases))
+        return (
+            '<nav class="reading-order" aria-label="Documents in reading order">'
+            "<h2>Documents in reading order</h2><ol>%s</ol></nav>" % "".join(items)
+        )
 
     def navigation_page(self, folder: Path | None) -> str:
         """The navigation view of specs/ or a folder below it (FR-001, FR-020)."""
@@ -816,6 +940,10 @@ table { border-collapse: collapse; display: block; overflow-x: auto; }
 th, td { border: 1px solid var(--line); padding: .35rem .6rem; text-align: left; vertical-align: top; }
 th { background: var(--soft); }
 hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+.reading-order { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.reading-order h2 { font-size: 1.1rem; margin: 0 0 .5rem; }
+.reading-order ol { margin: 0; padding-left: 1.5rem; }
+.reading-order [aria-current="page"] { font-weight: 700; color: var(--fg); text-decoration: none; }
 .listing { padding-left: 1.2rem; } .listing .dir a { font-weight: 600; }
 .ref { text-decoration: underline dotted; text-underline-offset: 3px; white-space: nowrap; }
 .ref-error { color: var(--err); font-weight: 600; cursor: help; }
