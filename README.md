@@ -24,6 +24,10 @@ A single-file, standard-library-only Python viewer for [Spec Kit](https://github
 
 ![A Mermaid sequence diagram rendered in the functional specification](docs/screenshots/mermaid.jpg)
 
+## Install
+
+Current version: **v0.1.0**. Download [`rich-specification-viewer-0.1.0.zip`](https://github.com/leejsinclair/rich-specification-viewer/archive/refs/tags/v0.1.0.zip) (or clone the repository and check out the `v0.1.0` tag), and copy `specview.py` into your project. It is a single file and needs nothing else. Releases are listed at [Releases](https://github.com/leejsinclair/rich-specification-viewer/releases).
+
 ## Run
 
 Python 3.11 or later, nothing to install. From the project folder that contains `specs/`:
