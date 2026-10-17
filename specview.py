@@ -49,7 +49,7 @@ CODE_RE = re.compile(r"\b" + CODE + r"\b")
 ITEM_DEF_RE = re.compile(r"^\s*(?:[-*+]\s+)?\*\*(" + CODE + r")\*\*\s*:")
 HEADING_RE = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
 HEADING_DEF_RE = re.compile(r"^(" + CODE + r")\b")
-TASK_DEF_RE = re.compile(r"^\s*[-*+]\s+\[[ xX]\]\s+(T\d{3,})\b")
+TASK_DEF_RE = re.compile(r"^\s*[-*+]\s+\[[ xX~!]\]\s+(T\d{3,})\b")
 
 
 def anchor_for(code: str) -> str:
@@ -61,6 +61,11 @@ LEAD_RE = re.compile(r"^([A-Z]{2,})-\d+\b")
 BULLET_LEAD_RE = re.compile(r"^\s*[-*+]\s+(?:\*\*)?([A-Z]{2,})-\d+\b")
 CELL_CODE_RE = re.compile(r"([A-Z]{2,})-\d+")
 FILLER_RE = re.compile(r"[\s,;/&+()\[\]*_`.\-]|\b(?:and|or)\b")
+
+
+def has_description(cell: str) -> bool:
+    """Whether a table cell says more than which codes it points at, whatever their prefixes."""
+    return bool(FILLER_RE.sub("", FIXED.code_re.sub("", CELL_CODE_RE.sub("", cell))))
 
 
 class Codes:
@@ -94,8 +99,7 @@ class Codes:
         first = cells[0].strip().strip("*").strip()
         if not self.cell_re.fullmatch(first):
             return None
-        rest = FILLER_RE.sub("", self.code_re.sub("", cells[1]))
-        return first if rest else None
+        return first if has_description(cells[1]) else None
 
 
 FIXED = Codes()
@@ -133,7 +137,7 @@ def discover_prefixes(text: str) -> set[str]:
             continue
         first = cells[0].strip().strip("*").strip()
         lead = CELL_CODE_RE.fullmatch(first)
-        if lead and FILLER_RE.sub("", FIXED.code_re.sub("", CELL_CODE_RE.sub("", cells[1]))):
+        if lead and has_description(cells[1]):
             found.add(lead.group(1))
     return found
 
@@ -216,12 +220,13 @@ def choose_host(override: str | None, environ=os.environ, dockerenv: Path = Path
 # ---------------------------------------------------------------------------------------------
 
 FENCE_OPEN_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*([^\s`]*)")
+FENCE_CLOSE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*$")
 EIL_BEGIN_RE = re.compile(r"^\s*<!--\s*eil:begin\s+(\w+)\s*-->\s*$")
 LIST_RE = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+(.*)$")
 HR_RE = re.compile(r"^ {0,3}([-*_])(?:\s*\1){2,}\s*$")
 TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$")
 QUOTE_RE = re.compile(r"^ {0,3}>\s?(.*)$")
-TASK_BOX_RE = re.compile(r"^\[([ xX])\]\s+(.*)$", re.S)
+TASK_BOX_RE = re.compile(r"^\[([ xX~!])\]\s+(.*)$", re.S)
 CODE_SPAN_RE = re.compile(r"(`+)(.+?)\1")
 LINK_RE = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 STRONG_RE = re.compile(r"\*\*(?=\S)(.+?)(?<=\S)\*\*")
@@ -698,15 +703,14 @@ def parse_tasks(text: str) -> list[Card]:
     phase: str | None = None
     fence = None
     for line in text.splitlines():
-        opening = FENCE_OPEN_RE.match(line)
-        if opening:
-            marks = opening.group(1)
-            if fence is None:
-                fence = marks[0]
-            elif marks[0] == fence:
+        if fence is not None:
+            closing = FENCE_CLOSE_RE.match(line)
+            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= len(fence):
                 fence = None
             continue
-        if fence is not None:
+        opening = FENCE_OPEN_RE.match(line)
+        if opening:
+            fence = opening.group(1)
             continue
         heading = PHASE_RE.match(line)
         if heading:
@@ -863,11 +867,21 @@ class Viewer:
 
     # -- story index ------------------------------------------------------------------------
 
+    def discover(self, story: str) -> tuple[str, ...]:
+        """The prefixes a story's documents introduce, found afresh on every request and kept nowhere (DEC-001)."""
+        prefixes: set[str] = set()
+        for path in self._markdown_files(self.guard.specs / story):
+            data = self.guard.read_bytes(path)
+            if data is not None:
+                prefixes |= discover_prefixes(data.decode("utf-8", "replace"))
+        return Codes(prefixes).prefixes
+
     def story_index(self, story: str) -> StoryIndex:
         key = self.story_key(story)
+        prefixes = self.discover(story)
         with self.lock:
             cached = self.indexes.get(story)
-            if cached is not None and cached.key == key:
+            if cached is not None and cached.key == key and cached.codes.prefixes == prefixes:
                 return cached
         index = self._build_index(story, key)
         with self.lock:
@@ -920,11 +934,10 @@ class Viewer:
         rel = self.rel(path)
         parts = rel.split("/")
         story = parts[0] if len(parts) > 1 else None
+        st = path.stat()
+        key = ((rel, st.st_mtime_ns, st.st_size),)
         if story is not None:
-            key = self.story_key(story)
-        else:
-            st = path.stat()
-            key = ((rel, st.st_mtime_ns, st.st_size),)
+            key = (self.story_key(story), self.discover(story), key)
         with self.lock:
             cached = self.pages.get(rel)
             if cached is not None and cached[0] == key:
@@ -935,6 +948,7 @@ class Viewer:
         return page
 
     def _render_document(self, path: Path, rel: str, story: str | None) -> str:
+        stamp = self.stamp(path)  # taken before the content is read, so an edit during rendering still refreshes
         data = self.guard.read_bytes(path)
         if data is None:
             raise FileNotFoundError(rel)
@@ -964,7 +978,7 @@ class Viewer:
             body = story_menu(story) + body + self.reading_order(story, rel)
         title = parts_title(rel)
         return page_html(
-            title, breadcrumbs(rel, is_dir=False), body, refs, self.guard.has_specs, stamp_of=(rel, self.stamp(path))
+            title, breadcrumbs(rel, is_dir=False), body, refs, self.guard.has_specs, stamp_of=(rel, stamp)
         )
 
     def _ref_entry(self, index: StoryIndex, code: str, state: str) -> dict:
@@ -989,7 +1003,11 @@ class Viewer:
         if resolved is None:
             return None
         try:
-            return resolved.stat().st_mtime if resolved.is_file() else None
+            if not resolved.is_file():
+                return None
+            with open(resolved, "rb"):  # a file that cannot be opened counts as unreadable
+                pass
+            return resolved.stat().st_mtime
         except OSError:
             return None
 
@@ -1001,10 +1019,16 @@ class Viewer:
             cached = self.boards.get(story)
             if cached is not None and cached[0] == stamp and stamp is not None:
                 return cached[1]
-        data = self.guard.read_bytes(path) if stamp is not None else None
+        try:
+            data = self.guard.read_bytes(path) if stamp is not None else None
+        except OSError:
+            data = None
         cards = parse_tasks(data.decode("utf-8", "replace")) if data is not None else []
         with self.lock:
-            self.boards[story] = (stamp, cards)
+            if data is None:
+                self.boards.pop(story, None)  # nothing was read, so try again next time
+            else:
+                self.boards[story] = (stamp, cards)
         return cards
 
     def kanban_page(self, story: str, by: str) -> str:
@@ -1105,7 +1129,7 @@ class Viewer:
                 entries.append('<li class="doc"><a href="%s">%s</a></li>' % (esc(doc_url(self.rel(child))), esc(child.name)))
         listing = '<ul class="listing">%s</ul>' % "".join(entries) if entries else "<p>This folder has no documents.</p>"
         heading = "specs/" + (rel + "/" if rel else "")
-        menu = story_menu(rel) if rel and "/" not in rel else ""
+        menu = story_menu(rel.split("/")[0]) if rel else ""
         return page_html(heading, breadcrumbs(rel, is_dir=True), menu + "<h1>%s</h1>%s" % (esc(heading), listing), {}, True)
 
     # -- search (DEC-005) -------------------------------------------------------------------
