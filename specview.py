@@ -56,6 +56,88 @@ def anchor_for(code: str) -> str:
     return code.lower()
 
 
+FIXED_PREFIXES = {"REQ", "UC", "OQ", "ART", "CH", "FR", "NFR", "SC", "DEC", "AIS", "EVD"}
+LEAD_RE = re.compile(r"^([A-Z]{2,})-\d+\b")
+BULLET_LEAD_RE = re.compile(r"^\s*[-*+]\s+(?:\*\*)?([A-Z]{2,})-\d+\b")
+CELL_CODE_RE = re.compile(r"([A-Z]{2,})-\d+")
+FILLER_RE = re.compile(r"[\s,;/&+()\[\]*_`.\-]|\b(?:and|or)\b")
+
+
+class Codes:
+    """The forms of code recognised in one story: the fixed list plus the prefixes its documents
+    introduce (DEC-001). Built per request from a story's documents and never stored."""
+
+    def __init__(self, prefixes=()):
+        self.prefixes = tuple(sorted(p for p in prefixes if p not in FIXED_PREFIXES))
+        pattern = CODE
+        self.bullet_def_re = None
+        self.cell_re = None
+        if self.prefixes:
+            found = "(?:%s)-\\d+" % "|".join(re.escape(p) for p in self.prefixes)
+            pattern = "(?:%s|%s)" % (CODE, found)
+            self.bullet_def_re = re.compile(r"^\s*[-*+]\s+(?:\*\*)?(" + found + r")\b")
+            self.cell_re = re.compile(found)
+        self.code_re = re.compile(r"\b" + pattern + r"\b")
+        self.item_def_re = re.compile(r"^\s*(?:[-*+]\s+)?\*\*(" + pattern + r")\*\*\s*:")
+        self.heading_def_re = re.compile(r"^(" + pattern + r")\b")
+        self.fixed = pattern is CODE
+
+    def bullet_definition(self, line: str) -> str | None:
+        match = self.bullet_def_re.match(line) if self.bullet_def_re else None
+        return match.group(1) if match else None
+
+    def row_definition(self, cells: list[str]) -> str | None:
+        """The discovered code a table row introduces: the only content of its first cell, with a
+        description in the next cell, judged by structure alone (FR-002)."""
+        if self.cell_re is None or len(cells) < 2:
+            return None
+        first = cells[0].strip().strip("*").strip()
+        if not self.cell_re.fullmatch(first):
+            return None
+        rest = FILLER_RE.sub("", self.code_re.sub("", cells[1]))
+        return first if rest else None
+
+
+FIXED = Codes()
+
+
+def table_rows(tokens: list):
+    """Yield (header index, row index, cells) for each body row of each table."""
+    n = len(tokens)
+    i = 0
+    while i < n - 1:
+        token, following = tokens[i], tokens[i + 1]
+        if isinstance(token, str) and token.lstrip().startswith("|") and isinstance(following, str) and TABLE_SEP_RE.match(following):
+            j = i + 2
+            while j < n and isinstance(tokens[j], str) and tokens[j].lstrip().startswith("|"):
+                yield i, j, _split_row(tokens[j])
+                j += 1
+            i = j
+            continue
+        i += 1
+
+
+def discover_prefixes(text: str) -> set[str]:
+    """The prefixes of the codes that start a heading or a bullet, or introduce a table row (FR-001, FR-002)."""
+    tokens, _ = tokenize(text)
+    found: set[str] = set()
+    for token in tokens:
+        if isinstance(token, Fence):
+            continue
+        heading = HEADING_RE.match(token)
+        match = LEAD_RE.match(heading.group(2)) if heading else BULLET_LEAD_RE.match(token)
+        if match:
+            found.add(match.group(1))
+    for _, _, cells in table_rows(tokens):
+        if len(cells) < 2:
+            continue
+        first = cells[0].strip().strip("*").strip()
+        lead = CELL_CODE_RE.fullmatch(first)
+        if lead and FILLER_RE.sub("", FIXED.code_re.sub("", CELL_CODE_RE.sub("", cells[1]))):
+            found.add(lead.group(1))
+    return found
+
+
 # ---------------------------------------------------------------------------------------------
 # Security: the Host check (CH-016) and the Path guard (FR-018)
 # ---------------------------------------------------------------------------------------------
@@ -236,9 +318,10 @@ class RenderContext:
     """What the renderer needs from its caller: how to mark a code, and whether it renders a
     tooltip section (no marking, diagrams replaced by a note: FR-021, FR-023)."""
 
-    def __init__(self, marker=None, tooltip: bool = False):
+    def __init__(self, marker=None, tooltip: bool = False, codes: Codes | None = None):
         self.marker = marker
         self.tooltip = tooltip
+        self.codes = codes or FIXED
         self.slugs: dict[str, int] = {}
 
     def unique_id(self, base: str) -> str:
@@ -270,7 +353,7 @@ def render_inline(text: str, ctx: RenderContext, skip_code: str | None = None) -
                 return code
             return ctx.marker(code)
 
-        text = CODE_RE.sub(mark, text)
+        text = ctx.codes.code_re.sub(mark, text)
     return re.sub("\x00(\\d+)\x00", lambda m: held[int(m.group(1))], text)
 
 
@@ -313,7 +396,7 @@ def render_tokens(tokens: list, ctx: RenderContext) -> str:
         if heading:
             level = len(heading.group(1))
             title = heading.group(2)
-            code = HEADING_DEF_RE.match(title)
+            code = ctx.codes.heading_def_re.match(title)
             ident = ctx.unique_id(anchor_for(code.group(1)) if code else slugify(title))
             body = render_inline(title, ctx, code.group(1) if code else None)
             out.append('<h%d id="%s">%s</h%d>' % (level, esc(ident), body, level))
@@ -385,7 +468,7 @@ def render_tokens(tokens: list, ctx: RenderContext) -> str:
             para.append(tokens[j])
             j += 1
         text = "\n".join(line.strip() for line in para)
-        item = ITEM_DEF_RE.match(para[0])
+        item = ctx.codes.item_def_re.match(para[0])
         attr = ' id="%s"' % esc(ctx.unique_id(anchor_for(item.group(1)))) if item else ""
         out.append("<p%s>%s</p>" % (attr, render_inline(text, ctx, item.group(1) if item else None)))
         i = j
@@ -419,7 +502,12 @@ def _render_table(rows: list[str], ctx: RenderContext) -> str:
     parts += ["<th>%s</th>" % render_inline(c, ctx) for c in head]
     parts.append("</tr></thead><tbody>")
     for cells in body:
-        parts.append("<tr>" + "".join("<td>%s</td>" % render_inline(c, ctx) for c in cells) + "</tr>")
+        defined = ctx.codes.row_definition(cells)
+        attr = ' id="%s"' % esc(ctx.unique_id(anchor_for(defined))) if defined else ""
+        tds = "".join(
+            "<td>%s</td>" % render_inline(c, ctx, defined if defined and i == 0 else None) for i, c in enumerate(cells)
+        )
+        parts.append("<tr%s>%s</tr>" % (attr, tds))
     parts.append("</tbody></table>")
     return "".join(parts)
 
@@ -453,10 +541,9 @@ def _render_list(lines: list[str], ctx: RenderContext) -> str:
     for text_lines, child_lines, raw in items:
         text = "\n".join(text_lines)
         ident = ""
-        skip = None
-        definition = ITEM_DEF_RE.match(raw) or TASK_DEF_RE.match(raw)
-        if definition:
-            skip = definition.group(1)
+        definition = ctx.codes.item_def_re.match(raw) or TASK_DEF_RE.match(raw)
+        skip = definition.group(1) if definition else ctx.codes.bullet_definition(raw)
+        if skip:
             ident = ' id="%s"' % esc(ctx.unique_id(anchor_for(skip)))
         box = TASK_BOX_RE.match(text)
         prefix = ""
@@ -495,7 +582,7 @@ class Definition:
     section_html: str
 
 
-def find_definitions(text: str, rel_path: str) -> list[Definition]:
+def find_definitions(text: str, rel_path: str, codes: Codes = FIXED) -> list[Definition]:
     """Every code this document introduces, with the rendered HTML of its defining section."""
     tokens, eil_blocks = tokenize(text)
     found: list[tuple[int, str, str, int]] = []  # (token index, code, kind, heading level or 7)
@@ -504,7 +591,7 @@ def find_definitions(text: str, rel_path: str) -> list[Definition]:
             continue
         heading = HEADING_RE.match(token)
         if heading:
-            code = HEADING_DEF_RE.match(heading.group(2))
+            code = codes.heading_def_re.match(heading.group(2))
             if code:
                 found.append((index, code.group(1), "heading", len(heading.group(1))))
             continue
@@ -512,9 +599,13 @@ def find_definitions(text: str, rel_path: str) -> list[Definition]:
         if task:
             found.append((index, task.group(1), "task", 7))
             continue
-        item = ITEM_DEF_RE.match(token)
+        item = codes.item_def_re.match(token)
         if item:
             found.append((index, item.group(1), "item", 7))
+            continue
+        bullet = codes.bullet_definition(token)
+        if bullet:
+            found.append((index, bullet, "item", 7))
     starts = {index for index, *_ in found}
     definitions: list[Definition] = []
     for index, code, kind, level in found:
@@ -528,8 +619,13 @@ def find_definitions(text: str, rel_path: str) -> list[Definition]:
                 if heading and len(heading.group(1)) <= level:
                     break
             end += 1
-        section = render_tokens(tokens[index:end], RenderContext(marker=None, tooltip=True))
+        section = render_tokens(tokens[index:end], RenderContext(marker=None, tooltip=True, codes=codes))
         definitions.append(Definition(code, rel_path, anchor_for(code), kind, section))
+    for header, row, cells in table_rows(tokens):
+        code = codes.row_definition(cells)
+        if code:
+            section = render_tokens([tokens[header], tokens[header + 1], tokens[row]], RenderContext(marker=None, tooltip=True, codes=codes))
+            definitions.append(Definition(code, rel_path, anchor_for(code), "row", section))
     for kind, body in eil_blocks:
         if kind != "challenge":
             continue
@@ -564,12 +660,119 @@ class StoryIndex:
     documents: list[str]
     aliases: dict[str, str] = field(default_factory=dict)
     definitions: dict[str, list[Definition]] = field(default_factory=dict)
+    codes: Codes = FIXED
 
     def state(self, code: str) -> str:
         found = self.definitions.get(code, [])
         if not found:
             return "unresolved"
         return "resolved" if len(found) == 1 else "ambiguous"
+
+
+# ---------------------------------------------------------------------------------------------
+# Kanban board from tasks.md (story 003: DEC-002, DEC-003, DEC-004)
+# ---------------------------------------------------------------------------------------------
+
+TASK_LINE_RE = re.compile(r"^\s*[-*+]\s+\[([ xX~!])\]\s+(T\d{3,})\b\s*(.*?)\s*$")
+PHASE_RE = re.compile(r"^##\s+(.*?)\s*#*\s*$")
+STORY_TAG_RE = re.compile(r"\[(US\d+)\]")
+IN_PROGRESS_TAG_RE = re.compile(r"\(in progress\)", re.I)
+BLOCKED_TAG_RE = re.compile(r"\(blocked\)", re.I)
+COLUMNS = (("backlog", "Backlog"), ("in-progress", "In progress"), ("blocked", "Blocked"), ("done", "Done"))
+UNALLOCATED = "Unallocated"
+
+
+@dataclass
+class Card:
+    task: str
+    story: str | None
+    description: str
+    phase: str | None
+    column: str
+
+
+def parse_tasks(text: str) -> list[Card]:
+    """The cards of a tasks.md, read line by line. Blocked wins over in progress; a task marked done is
+    done; a line that is not a task is ignored (DEC-003). Nothing is written back."""
+    cards: list[Card] = []
+    phase: str | None = None
+    fence = None
+    for line in text.splitlines():
+        opening = FENCE_OPEN_RE.match(line)
+        if opening:
+            marks = opening.group(1)
+            if fence is None:
+                fence = marks[0]
+            elif marks[0] == fence:
+                fence = None
+            continue
+        if fence is not None:
+            continue
+        heading = PHASE_RE.match(line)
+        if heading:
+            phase = heading.group(1)
+            continue
+        task = TASK_LINE_RE.match(line)
+        if not task:
+            continue
+        mark, code, rest = task.groups()
+        if mark in "xX":
+            column = "done"
+        elif mark == "!" or BLOCKED_TAG_RE.search(rest):
+            column = "blocked"
+        elif mark == "~" or IN_PROGRESS_TAG_RE.search(rest):
+            column = "in-progress"
+        else:
+            column = "backlog"
+        story = STORY_TAG_RE.search(rest)
+        description = " ".join(STORY_TAG_RE.sub("", rest, count=1).split()) if story else rest
+        cards.append(Card(code, story.group(1) if story else None, description, phase, column))
+    return cards
+
+
+def group_cards(cards: list[Card], by: str) -> list[tuple[str, list[Card]]]:
+    """Cards grouped by phase or by user story in order of first appearance, Unallocated last (AIS-027)."""
+    groups: dict[str, list[Card]] = {}
+    for card in cards:
+        key = (card.story if by == "story" else card.phase) or UNALLOCATED
+        groups.setdefault(key, []).append(card)
+    ordered = [(name, group) for name, group in groups.items() if name != UNALLOCATED]
+    if UNALLOCATED in groups:
+        ordered.append((UNALLOCATED, groups[UNALLOCATED]))
+    return ordered
+
+
+def kanban_body(story: str, cards: list[Card], by: str) -> str:
+    """The board for a story as HTML; every description and label is escaped (AIS-036)."""
+    other = "phase" if by == "story" else "story"
+    head = "<h1>Kanban: %s</h1>" % esc(story)
+    switch = '<p class="board-switch">Grouped by %s. <a href="?group=%s">Group by %s</a></p>' % (
+        "user story" if by == "story" else "phase",
+        other,
+        "phase" if by == "story" else "user story",
+    )
+    if not cards:
+        return head + '<p class="board-empty">No tasks were found for this story.</p>'
+    sections = []
+    for name, group in group_cards(cards, by):
+        columns = []
+        for column, title in COLUMNS:
+            chosen = [c for c in group if c.column == column]
+            items = "".join(
+                '<li class="card"><span class="card-id">%s</span>%s <span class="card-text">%s</span></li>'
+                % (
+                    esc(c.task),
+                    ' <span class="card-story">%s</span>' % esc(c.story) if c.story and by != "story" else "",
+                    esc(c.description),
+                )
+                for c in chosen
+            )
+            columns.append(
+                '<section class="col col-%s"><h3>%s <span class="count">%d</span></h3><ul>%s</ul></section>'
+                % (column, title, len(chosen), items)
+            )
+        sections.append('<section class="lane"><h2>%s</h2><div class="cols">%s</div></section>' % (esc(name), "".join(columns)))
+    return head + switch + "".join(sections)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -627,6 +830,7 @@ class Viewer:
         self.lock = threading.Lock()
         self.indexes: dict[str, StoryIndex] = {}
         self.pages: dict[str, tuple[tuple, str]] = {}
+        self.boards: dict[str, tuple[float | None, list[Card]]] = {}
 
     # -- walking ----------------------------------------------------------------------------
 
@@ -677,12 +881,18 @@ class Viewer:
         index = StoryIndex(story, key, [])
         by_path: dict[Path, str] = {}
         by_content: dict[tuple[int, str], str] = {}
-        for path in paths:
-            rel = self.rel(path)
-            resolved = self.guard.resolve(path)
+        loaded = []
+        prefixes: set[str] = set()
+        for path in paths:  # first pass: the prefixes this story introduces (DEC-001)
             data = self.guard.read_bytes(path)
+            resolved = self.guard.resolve(path)
             if resolved is None or data is None:
                 continue
+            loaded.append((path, resolved, data))
+            prefixes |= discover_prefixes(data.decode("utf-8", "replace"))
+        index.codes = Codes(prefixes)
+        for path, resolved, data in loaded:
+            rel = self.rel(path)
             index.documents.append(rel)
             digest = (len(data), hashlib.sha256(data).hexdigest())
             original = by_path.get(resolved) or by_content.get(digest)
@@ -692,7 +902,7 @@ class Viewer:
             by_path[resolved] = rel
             by_content[digest] = rel
             seen_here: set[str] = set()
-            for definition in find_definitions(data.decode("utf-8", "replace"), rel):
+            for definition in find_definitions(data.decode("utf-8", "replace"), rel, index.codes):
                 if definition.code in seen_here:
                     continue  # defined twice in one document still counts once
                 seen_here.add(definition.code)
@@ -749,11 +959,13 @@ class Viewer:
                     code,
                 )
 
-        body = render_markdown(text, RenderContext(marker=marker))
+        body = render_markdown(text, RenderContext(marker=marker, codes=index.codes if story is not None else None))
         if story is not None:
-            body += self.reading_order(story, rel)
+            body = story_menu(story) + body + self.reading_order(story, rel)
         title = parts_title(rel)
-        return page_html(title, breadcrumbs(rel, is_dir=False), body, refs, self.guard.has_specs)
+        return page_html(
+            title, breadcrumbs(rel, is_dir=False), body, refs, self.guard.has_specs, stamp_of=(rel, self.stamp(path))
+        )
 
     def _ref_entry(self, index: StoryIndex, code: str, state: str) -> dict:
         if state == "unresolved":
@@ -768,6 +980,41 @@ class Viewer:
             "href": doc_url(d.document) + "#" + d.anchor,
             "html": d.section_html,
         }
+
+    # -- stamps and the kanban board (story 003) ----------------------------------------------
+
+    def stamp(self, path: Path | str) -> float | None:
+        """The modified time of a file inside specs/, or None when it cannot be read (DEC-004)."""
+        resolved = self.guard.resolve(path)
+        if resolved is None:
+            return None
+        try:
+            return resolved.stat().st_mtime if resolved.is_file() else None
+        except OSError:
+            return None
+
+    def board(self, story: str) -> list[Card]:
+        """The parsed cards of a story's tasks.md, parsed again only when its modified time changes."""
+        path = self.guard.specs / story / "tasks.md"
+        stamp = self.stamp(path)
+        with self.lock:
+            cached = self.boards.get(story)
+            if cached is not None and cached[0] == stamp and stamp is not None:
+                return cached[1]
+        data = self.guard.read_bytes(path) if stamp is not None else None
+        cards = parse_tasks(data.decode("utf-8", "replace")) if data is not None else []
+        with self.lock:
+            self.boards[story] = (stamp, cards)
+        return cards
+
+    def kanban_page(self, story: str, by: str) -> str:
+        tasks = self.guard.specs / story / "tasks.md"
+        stamp = self.stamp(tasks)
+        body = story_menu(story) + kanban_body(story, self.board(story), by)
+        rel = story + "/tasks.md"
+        return page_html(
+            "Kanban: " + story, breadcrumbs(story, is_dir=True), body, {}, True, stamp_of=(rel, stamp), wide=True
+        )
 
     # -- reading order (story 002) ------------------------------------------------------------
 
@@ -858,7 +1105,8 @@ class Viewer:
                 entries.append('<li class="doc"><a href="%s">%s</a></li>' % (esc(doc_url(self.rel(child))), esc(child.name)))
         listing = '<ul class="listing">%s</ul>' % "".join(entries) if entries else "<p>This folder has no documents.</p>"
         heading = "specs/" + (rel + "/" if rel else "")
-        return page_html(heading, breadcrumbs(rel, is_dir=True), "<h1>%s</h1>%s" % (esc(heading), listing), {}, True)
+        menu = story_menu(rel) if rel and "/" not in rel else ""
+        return page_html(heading, breadcrumbs(rel, is_dir=True), menu + "<h1>%s</h1>%s" % (esc(heading), listing), {}, True)
 
     # -- search (DEC-005) -------------------------------------------------------------------
 
@@ -880,6 +1128,14 @@ class Viewer:
                 results.append({"story": story, "file": file, "href": doc_url(rel)})
         results.sort(key=lambda r: ((r["story"] or "") + "/" + r["file"]).lower())
         return {"specs": True, "results": results}
+
+
+def story_menu(story: str) -> str:
+    """The menu of a story's pages: its documents and its kanban board (FR-011)."""
+    return '<nav class="story-menu" aria-label="Story"><a href="%s">Documents</a> <a href="%s">Kanban board</a></nav>' % (
+        esc(dir_url(story)),
+        esc(doc_url(story) + "/kanban"),
+    )
 
 
 def doc_url(rel: str) -> str:
@@ -944,6 +1200,21 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
 .reading-order h2 { font-size: 1.1rem; margin: 0 0 .5rem; }
 .reading-order ol { margin: 0; padding-left: 1.5rem; }
 .reading-order [aria-current="page"] { font-weight: 700; color: var(--fg); text-decoration: none; }
+.story-menu { display: flex; gap: 1rem; margin: 0 0 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.wide header, .wide main { max-width: none; }
+.board-switch { color: var(--muted); }
+.board-empty { color: var(--muted); font-style: italic; }
+.lane { margin: 0 0 2rem; }
+.cols { display: grid; grid-template-columns: repeat(4, minmax(12rem, 1fr)); gap: .75rem; overflow-x: auto; }
+.col { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; min-width: 0; }
+.col h3 { font-size: .95rem; margin: 0 0 .5rem; }
+.col .count { color: var(--muted); font-weight: 400; }
+.col ul { list-style: none; margin: 0; padding: 0; }
+.card { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: .4rem .5rem; margin: 0 0 .4rem; font-size: .88rem; line-height: 1.4; overflow-wrap: anywhere; }
+.card-id { font-weight: 600; } .card-story { color: var(--muted); }
+.col-blocked .card { border-left: 4px solid var(--err); }
+.col-in-progress .card { border-left: 4px solid var(--link); }
+.col-done .card { color: var(--muted); }
 .listing { padding-left: 1.2rem; } .listing .dir a { font-weight: 600; }
 .ref { text-decoration: underline dotted; text-underline-offset: 3px; white-space: nowrap; }
 .ref-error { color: var(--err); font-weight: 600; cursor: help; }
@@ -1053,25 +1324,59 @@ if (blocks.length) {
 """.replace("__MERMAID_URL__", MERMAID_URL)
 
 
+REFRESH_JS = r"""
+// Page refresher (REQ-012, DEC-004): every 10 seconds check the shown file and reload when it changed
+(() => {
+  const info = JSON.parse(document.getElementById('stamp').textContent);
+  const key = 'specview-scroll:' + location.pathname + location.search;
+  try {
+    const saved = sessionStorage.getItem(key);
+    if (saved !== null) {
+      sessionStorage.removeItem(key);
+      window.addEventListener('load', () => window.scrollTo(0, Number(saved)));
+    }
+  } catch (e) {}
+  setInterval(async () => {
+    try {
+      const r = await fetch('/api/stamp?path=' + encodeURIComponent(info.path), { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.stamp === null || d.stamp === info.stamp) return;
+      try { sessionStorage.setItem(key, String(window.scrollY)); } catch (e) {}
+      location.reload();
+    } catch (e) {}
+  }, 10000);
+})();
+"""
+
+
 def refs_json(refs: dict) -> str:
     """JSON safe to embed in a script element (DEC-004)."""
     text = json.dumps(refs, ensure_ascii=False)
     return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
-def page_html(title: str, crumbs: str, body: str, refs: dict, has_specs: bool) -> str:
+def page_html(
+    title: str, crumbs: str, body: str, refs: dict, has_specs: bool, stamp_of: tuple[str, float | None] | None = None, wide: bool = False
+) -> str:
     message = "" if has_specs else NO_SPECS
+    stamp = ""
+    if stamp_of is not None:
+        stamp = '<script type="application/json" id="stamp">%s</script><script>%s</script>' % (
+            refs_json({"path": stamp_of[0], "stamp": stamp_of[1]}),
+            REFRESH_JS,
+        )
     return (
         "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        "<title>%s</title><style>%s</style></head><body>"
+        "<title>%s</title><style>%s</style></head><body%s>"
         '<header>%s<div class="search"><input id="q" type="search" autocomplete="off" '
         'placeholder="Search by glob pattern, e.g. */s01-*" aria-label="Search documents">'
         '<p id="search-msg" class="search-msg">%s</p><ul id="results" hidden></ul></div></header>'
         '<main id="content">%s</main><div id="tip" class="tip" hidden></div>'
         '<script type="application/json" id="refs">%s</script>'
-        "<script>%s</script><script type=\"module\">%s</script></body></html>"
-    ) % (esc(title), CSS, crumbs, esc(message), body, refs_json(refs), PAGE_JS, DIAGRAM_JS)
+        "<script>%s</script><script type=\"module\">%s</script>%s</body></html>"
+    ) % (esc(title), CSS, ' class="wide"' if wide else "", crumbs, esc(message), body, refs_json(refs), PAGE_JS, DIAGRAM_JS, stamp)
 
 
 def message_page(title: str, text: str) -> str:
@@ -1106,6 +1411,26 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/search":
             query = parse_qs(url.query).get("q", [""])[0]
             self._send(200, json.dumps(self.viewer.search(query)), "application/json; charset=utf-8")
+            return
+        if path == "/api/stamp":
+            rel = parse_qs(url.query).get("path", [""])[0]
+            guard = self.viewer.guard
+            if not rel or guard.resolve(rel) is None:
+                self._send(403, json.dumps({"error": "outside specs"}), "application/json; charset=utf-8")
+                return
+            self._send(200, json.dumps({"stamp": self.viewer.stamp(rel)}), "application/json; charset=utf-8")
+            return
+        board = re.fullmatch(r"/specs/([^/]+)/kanban/?", path)
+        if board:
+            story = board.group(1)
+            folder = self.viewer.guard.resolve(story)
+            if folder is None:
+                self._send(403, message_page("Refused", OUTSIDE))
+            elif not folder.is_dir():
+                self._send(404, message_page("Not found", "This story no longer exists, or never did."))
+            else:
+                group = parse_qs(url.query).get("group", [""])[0]
+                self._send(200, self.viewer.kanban_page(story, "story" if group == "story" else "phase"))
             return
         if path in ("/", "/specs", "/specs/"):
             self._send(200, self.viewer.navigation_page(self.viewer.guard.specs if self.viewer.guard.has_specs else None))
