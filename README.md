@@ -3,6 +3,9 @@
 A single-file, standard-library-only Python viewer for [Spec Kit](https://github.com/github/spec-kit) Markdown documents under `specs/`.
 
 - Hover a reference code (`REQ-001`, `FR-012`, `DEC-004`, `ART-007`, `CH-003`, ...) to see the section that defines it; click to follow it. Codes with no definition, or more than one, are shown as errors.
+- A code you introduce yourself is followed too. A code that starts a heading or a bullet point (`VO-001`), or sits alone in the first column of a table row that has a description, makes its prefix a form of code for that story, and every code of that form is then marked wherever the story refers to it. Forms are found per story, on every request, and are never carried between stories.
+- Every story has a read-only kanban board of its `tasks.md` at `/specs/<story>/kanban`, reached from the menu at the top of the story's pages. Tasks sit in Backlog, In progress (`[~]` or `(in progress)`), Blocked (`[!]` or `(blocked)`, which wins over in progress) or Done, grouped by phase or, with `?group=story`, by user story (`[US1]`). Nothing is ever written back to the file.
+- Open document pages and the board check their file about every 10 seconds and reload when it changed, keeping your place in the document and the board's grouping. If the file cannot be read, the page keeps what it shows.
 - Search with glob patterns or navigate by story and folder, with breadcrumbs.
 - Mermaid diagrams (flowchart, sequence, ER, C4) are drawn in the page. This is the only outside script: `mermaid@11` from jsDelivr. A diagram that fails shows an error in its place, and diagrams need internet access to jsDelivr. Mermaid's C4 support is experimental, so C4 layouts can look rough.
 - Minimal CSS, no other JavaScript dependencies, no configuration.
